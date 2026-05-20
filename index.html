@@ -79,7 +79,9 @@ function renderCard(p){
       ? `<video src="${p.media_url}" class="prev" controls playsinline preload="metadata"></video>`
       : `<img src="${p.media_url}" class="prev"/>`;
     const label=isVid?"Open Video":"Open Image";
-    const iosHint=isIOS?`<div class="hint">iPhone: long-press the preview &gt; Save to ${isVid?"Files":"Photos"}</div>`:"";
+    const iosHint=isIOS?(isVid
+      ? `<div class="hint">iPhone: long-press the <strong>Open Video</strong> button &gt; Download Linked File. Or tap Open Video, play it, then tap the share icon &gt; Save to Files.</div>`
+      : `<div class="hint">iPhone: long-press the preview &gt; Save to Photos</div>`):"";
     h+=`<div class="media">
       ${preview}
       <a href="${p.media_url}" download target="_blank" rel="noopener" class="dl">${label}</a>
