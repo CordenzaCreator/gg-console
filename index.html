@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GistGift Posting Console</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,system-ui,sans-serif;background:#0f0f14;color:#e0e0e0;padding:20px;max-width:800px;margin:0 auto}
+h1{color:#a78bfa;margin-bottom:4px;font-size:22px}
+.sub{color:#666;margin-bottom:24px;font-size:13px}
+.count{color:#a78bfa;font-size:14px;margin-bottom:20px}
+h2{color:#ccc;font-size:16px;margin:24px 0 12px;border-bottom:1px solid #222;padding-bottom:6px}
+.card{background:#1a1a24;border:1px solid #2a2a3a;border-radius:10px;padding:16px;margin-bottom:16px}
+.card.done{opacity:.3;pointer-events:none}
+.hdr{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.plat{font-weight:700;font-size:12px;padding:2px 8px;border-radius:4px;text-transform:uppercase}
+.plat-x{background:#1d1d1d;color:#fff}
+.plat-tiktok{background:#1a1a2e;color:#a78bfa}
+.dt{color:#888;font-size:12px}
+.meta{color:#555;font-size:11px;margin-left:auto}
+.cap{background:#12121a;border:1px solid #2a2a3a;border-radius:6px;padding:12px;margin-bottom:12px}
+.captxt{font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.media{margin-bottom:12px}
+.prev{width:100%;max-width:300px;border-radius:8px;margin-bottom:8px;display:block}
+details{margin-bottom:12px}
+summary{cursor:pointer;color:#a78bfa;font-size:13px;margin-bottom:6px}
+.vo{background:#12121a;padding:10px;border-radius:6px;font-size:13px;line-height:1.6;white-space:pre-wrap;color:#bbb}
+table{width:100%;font-size:12px;border-collapse:collapse}
+th{text-align:left;color:#888;padding:4px 6px;border-bottom:1px solid #2a2a3a}
+td{padding:6px;border-bottom:1px solid #1a1a24;vertical-align:top}
+td a{color:#a78bfa}
+.cta{font-size:12px;color:#666;font-style:italic;margin-bottom:12px}
+.acts{display:flex;gap:8px}
+.btn{border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600}
+.cp{background:#2a2a3a;color:#a78bfa;float:right;margin-top:8px}
+.dl{background:#2a2a3a;color:#a78bfa;display:inline-block;text-decoration:none;padding:8px 16px;border-radius:6px;font-size:13px;font-weight:600}
+.post{background:#059669;color:#fff;flex:1}
+.skip{background:#333;color:#888}
+.btn:hover,.dl:hover{opacity:.85}
+.empty{color:#555;text-align:center;padding:40px}
+.toast{position:fixed;bottom:20px;right:20px;background:#059669;color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;display:none;z-index:99}
+.loading{color:#a78bfa;text-align:center;padding:60px;font-size:16px}
+.hint{color:#888;font-size:12px;margin-top:6px;font-style:italic}
+video.prev{background:#000}
+</style>
+</head>
+<body>
+<h1>GistGift Posting Console</h1>
+<div class="sub">Pull content. Post it. Mark done.</div>
+<div id="app"><div class="loading">Loading posts...</div></div>
+<div class="toast" id="toast"></div>
+<script>
+const API="https://oakywhbslihhwedukhmk.supabase.co/functions/v1/gg-posting-console";
+const app=document.getElementById("app");
+const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+
+function esc(s){return(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+function toast(m){const t=document.getElementById("toast");t.textContent=m;t.style.display="block";setTimeout(()=>t.style.display="none",2000)}
+
+function renderCard(p){
+  const rs=p.review_data?.score||"--";
+  const bt=p.performance_tags?.beat||"--";
+  const tn=p.performance_tags?.emotional_tone||"--";
+  const scenes=(p.video_script?.scenes||[]);
+  let h=`<div class="card" id="c-${p.id}">
+    <div class="hdr">
+      <span class="plat plat-${p.platform}">${p.platform==="x"?"X":"TikTok"}</span>
+      <span class="dt">${p.scheduled_for}</span>
+      <span class="meta">Review: ${rs} | Beat: ${bt} | Tone: ${tn}</span>
+    </div>
+    <div class="cap">
+      <div class="captxt" id="cap-${p.id}">${esc(p.caption)}</div>
+      <button class="btn cp" onclick="copyCaption('${p.id}')">Copy Caption</button>
+    </div>`;
+  if(p.media_url){
+    const isVid=/\.(mp4|mov|webm)(\?|$)/i.test(p.media_url);
+    const preview=isVid
+      ? `<video src="${p.media_url}" class="prev" controls playsinline preload="metadata"></video>`
+      : `<img src="${p.media_url}" class="prev"/>`;
+    const label=isVid?"Open Video":"Open Image";
+    const iosHint=isIOS?`<div class="hint">iPhone: long-press the preview &gt; Save to ${isVid?"Files":"Photos"}</div>`:"";
+    h+=`<div class="media">
+      ${preview}
+      <a href="${p.media_url}" download target="_blank" rel="noopener" class="dl">${label}</a>
+      ${iosHint}
+    </div>`;
+  }
+  if(p.voiceover_text){
+    h+=`<details><summary>Voiceover Script</summary>
+      <pre class="vo" id="vo-${p.id}">${esc(p.voiceover_text)}</pre>
+      <button class="btn cp" onclick="copyVo('${p.id}')">Copy Voiceover</button>
+    </details>`;
+  }
+  if(scenes.length>0){
+    h+=`<details><summary>Video Scenes (${scenes.length})</summary><table>
+      <tr><th>#</th><th>Time</th><th>Visual</th><th>Text</th><th>Stock Search</th></tr>`;
+    for(const s of scenes){
+      const q=encodeURIComponent(s.stock_search||s.visual||"");
+      h+=`<tr><td>${s.scene_number}</td><td>${s.duration}</td><td>${esc(s.visual)}</td><td><strong>${esc(s.text_overlay)}</strong></td><td><a href="https://www.pexels.com/search/videos/${q}" target="_blank">${esc(s.stock_search)}</a></td></tr>`;
+    }
+    h+=`</table></details>`;
+  }
+  if(p.video_script?.cta) h+=`<div class="cta">CTA: ${esc(p.video_script.cta)}</div>`;
+  h+=`<div class="acts">
+    <button class="btn post" onclick="markPosted('${p.id}')">Mark Posted</button>
+    <button class="btn skip" onclick="skipPost('${p.id}')">Skip</button>
+  </div></div>`;
+  return h;
+}
+
+async function load(){
+  try{
+    const r=await fetch(API);
+    const d=await r.json();
+    const posts=d.posts||[];
+    if(posts.length===0){app.innerHTML='<div class="empty">No posts ready. Check back after 7 AM CT.</div>';return;}
+    const xp=posts.filter(p=>p.platform==="x");
+    const tp=posts.filter(p=>p.platform==="tiktok");
+    let html=`<div class="count">${posts.length} post${posts.length!==1?"s":""} ready</div>`;
+    if(xp.length) html+=`<h2>X Posts (${xp.length})</h2>`+xp.map(renderCard).join("");
+    if(tp.length) html+=`<h2>TikTok Posts (${tp.length})</h2>`+tp.map(renderCard).join("");
+    app.innerHTML=html;
+  }catch(e){app.innerHTML=`<div class="empty">Error: ${e.message}</div>`;}
+}
+
+async function copyText(text,label){
+  try{
+    if(navigator.clipboard&&window.isSecureContext){
+      await navigator.clipboard.writeText(text);
+    }else{
+      const ta=document.createElement("textarea");
+      ta.value=text;ta.setAttribute("readonly","");
+      ta.style.cssText="position:fixed;top:-1000px;opacity:0";
+      document.body.appendChild(ta);
+      ta.select();ta.setSelectionRange(0,ta.value.length);
+      const ok=document.execCommand("copy");
+      document.body.removeChild(ta);
+      if(!ok)throw new Error("execCommand failed");
+    }
+    toast(label+" copied!");
+  }catch(e){
+    toast("Copy blocked - select text manually");
+  }
+}
+function copyCaption(id){copyText(document.getElementById("cap-"+id).textContent,"Caption")}
+function copyVo(id){copyText(document.getElementById("vo-"+id).textContent,"Voiceover")}
+
+async function markPosted(id){
+  if(!confirm("Mark as posted?"))return;
+  const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"mark_posted",id})});
+  if(r.ok){document.getElementById("c-"+id).classList.add("done");toast("Posted!")}
+  else toast("Error");
+}
+async function skipPost(id){
+  const reason=prompt("Skip reason (optional):");
+  if(reason===null)return;
+  const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"skip",id,reason})});
+  if(r.ok){document.getElementById("c-"+id).classList.add("done");toast("Skipped")}
+  else toast("Error");
+}
+
+load();
+</script>
+</body>
+</html>
