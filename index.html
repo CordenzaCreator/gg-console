@@ -75,16 +75,20 @@ function renderCard(p){
     </div>`;
   if(p.media_url){
     const isVid=/\.(mp4|mov|webm)(\?|$)/i.test(p.media_url);
+    const fname=(p.media_url.split("?")[0].split("/").pop())||(isVid?"video.mp4":"image.png");
+    const isSb=/supabase\.co\/storage\//.test(p.media_url);
+    const sep=p.media_url.includes("?")?"&":"?";
+    const dlUrl=isSb?`${p.media_url}${sep}download=${encodeURIComponent(fname)}`:p.media_url;
     const preview=isVid
       ? `<video src="${p.media_url}" class="prev" controls playsinline preload="metadata"></video>`
       : `<img src="${p.media_url}" class="prev"/>`;
-    const label=isVid?"Open Video":"Open Image";
+    const label=isVid?"Save Video":"Save Image";
     const iosHint=isIOS?(isVid
-      ? `<div class="hint">iPhone: long-press the <strong>Open Video</strong> button &gt; Download Linked File. Or tap Open Video, play it, then tap the share icon &gt; Save to Files.</div>`
+      ? `<div class="hint">iPhone: tap <strong>Save Video</strong> to download to Files. Then move it to Photos from the Files app if needed.</div>`
       : `<div class="hint">iPhone: long-press the preview &gt; Save to Photos</div>`):"";
     h+=`<div class="media">
       ${preview}
-      <a href="${p.media_url}" download target="_blank" rel="noopener" class="dl">${label}</a>
+      <a href="${dlUrl}" download="${fname}" target="_blank" rel="noopener" class="dl">${label}</a>
       ${iosHint}
     </div>`;
   }
